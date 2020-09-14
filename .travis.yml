@@ -5,6 +5,14 @@ language: go
 # sudo: requried
 dist: bionic
 
+jobs:
+  - arch: amd64
+    env: TARGET=amd64
+  - arch: amd64
+    env: TARGET=ppc64le
+  - arch: arm64
+    env: TARGET=arm64
+
 services:
   - docker
 
@@ -20,12 +28,10 @@ env:
     - REPOSITORY_USER=${REPOSITORY_USER}
     - DOCKER_CLI_EXPERIMENTAL="enabled"
     - secure: "${REGISTRY_SECURE}"
-  jobs:
-    - TARGET=amd64
-    - TARGET=ppc64le
 
 before_install:
   - if [ "${REPOSITORY_NAME}" = "" ]; then export REPOSITORY_NAME=multus; fi
+  - if [ "${REPOSITORY_USER}" = "" ]; then export REPOSITORY_USER=nfvperobot; fi
   - sudo apt-get update -qq
   - go get github.com/mattn/goveralls
 
@@ -49,6 +55,12 @@ script:
       docker build -t ${REPOSITORY_USER}/${REPOSITORY_NAME}:latest-amd64 .
       docker build -t ${REPOSITORY_USER}/${REPOSITORY_NAME}:latest-ppc64le -f Dockerfile.ppc64le .
       docker build -t ${REPOSITORY_USER}/${REPOSITORY_NAME}-origin:latest -f Dockerfile.openshift .
+    fi
+  - |
+    if [ "${TARGET}" == "arm64" ]; then
+      sudo env PATH=${PATH} ./test.sh
+      goveralls -coverprofile=coverage.out -service=travis-ci
+      docker build -t ${REPOSITORY_USER}/${REPOSITORY_NAME}:latest-arm64 -f Dockerfile.arm64 .
     fi
 
 deploy:
